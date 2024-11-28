@@ -163,21 +163,6 @@ class ExpressionParser {
 				continue;
 			}
 
-			if (this.tokens.length > 0) {
-				const lastToken = this.tokens[this.tokens.length - 1];
-				console.log('fsdsad');
-
-				if (
-					lastToken.type !== ExpressionParser.TOKEN_TYPES.NUMBER ||
-					lastToken.type !== ExpressionParser.TOKEN_TYPES.IDENTIFIER
-				) {
-					this.errors.push({
-						message: `Неочікуваний кінець виразу на позиції ${lastToken.position}`,
-						position: lastToken.position
-					});
-				}
-			}
-
 			// Unknown token
 			this.errors.push({
 				message: `Невідомий токен '${char}' на позиції ${position}`,
@@ -259,7 +244,8 @@ class ExpressionParser {
 }
 
 const parser = new ExpressionParser();
-const testExpression = '*a ++ nb /* k -+/ g/';
+const testExpression =
+	'*101*1#(t-q)(t+q)//dt - (int*)f(8t, -(k/h)A[i+6.]), exp(), ))(t-k*8.00.1/.0';
 const result = parser.parse(testExpression);
 
 console.log('Tokens:', result.tokens);
