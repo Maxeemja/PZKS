@@ -174,7 +174,10 @@ class ExpressionParser {
 		// Checks last char to be only IDENTIFIER
 		if (
 			!ExpressionParser.PATTERNS.IDENTIFIER.test(expression[position - 1]) &&
-			!ExpressionParser.PATTERNS.DECIMAL_NUMBER.test(expression[position - 1])
+			!ExpressionParser.PATTERNS.DECIMAL_NUMBER.test(
+				expression[position - 1]
+			) &&
+			!['(', ')'].includes(expression[position - 1])
 		) {
 			this.errors.push({
 				message: `Некоректний кінець виразу`,
@@ -245,8 +248,8 @@ class ExpressionParser {
 
 const parser = new ExpressionParser();
 const testExpression =
-	'*101*1#(t-q)(t+q)//dt - (int*)f(8t, -(k/h)A[i+6.]), exp(), ))(t-k*8.00.1/.0';
+	'2(t) - f2(t) + g()/h(2, )*func(-t/q, f(4-t),-(x+2)*(y-2))';
 const result = parser.parse(testExpression);
-
+// *101*1#(t-q)(t+q)//dt - (int*)f(8t, -(k/h)A[i+6.]), exp(), ))(t-k*8.00.1/.0
 console.log('Tokens:', result.tokens);
 console.log('Errors:', result.errors);
