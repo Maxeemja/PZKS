@@ -21,7 +21,8 @@ class ExpressionParser {
 		IDENTIFIER: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
 		DECIMAL_NUMBER: /^-?\d+(\.\d+)?$/,
 		HEX_NUMBER: /^(0x|0X)[0-9A-Fa-f]+$/,
-		BINARY_NUMBER: /^(0b|0B)[01]+$/
+		BINARY_NUMBER: /^(0b|0B)[01]+$/,
+		START_EXPRESSION: /^[a-zA-Z0-9+\-]$/
 	};
 
 	tokenize(expression) {
@@ -29,6 +30,13 @@ class ExpressionParser {
 		this.tokens = [];
 		let currentToken = '';
 		let position = 0;
+
+		if (!ExpressionParser.PATTERNS.START_EXPRESSION.test(expression[0])) {
+			this.errors.push({
+				message: `Некоректний початок виразу`,
+				position: 0
+			});
+		}
 
 		while (position < expression.length) {
 			const char = expression[position];
@@ -144,7 +152,7 @@ class ExpressionParser {
 				continue;
 			}
 
-			// Parentheses
+			// Parenthesis
 			if (['(', ')'].includes(char)) {
 				this.tokens.push({
 					type: ExpressionParser.TOKEN_TYPES.PARENTHESIS,
@@ -155,12 +163,38 @@ class ExpressionParser {
 				continue;
 			}
 
+			if (this.tokens.length > 0) {
+				const lastToken = this.tokens[this.tokens.length - 1];
+				console.log('fsdsad');
+
+				if (
+					lastToken.type !== ExpressionParser.TOKEN_TYPES.NUMBER ||
+					lastToken.type !== ExpressionParser.TOKEN_TYPES.IDENTIFIER
+				) {
+					this.errors.push({
+						message: `Неочікуваний кінець виразу на позиції ${lastToken.position}`,
+						position: lastToken.position
+					});
+				}
+			}
+
 			// Unknown token
 			this.errors.push({
 				message: `Невідомий токен '${char}' на позиції ${position}`,
 				position: position
 			});
 			position++;
+		}
+
+		// Checks last char to be only IDENTIFIER
+		if (
+			!ExpressionParser.PATTERNS.IDENTIFIER.test(expression[position - 1]) &&
+			!ExpressionParser.PATTERNS.DECIMAL_NUMBER.test(expression[position - 1])
+		) {
+			this.errors.push({
+				message: `Некоректний кінець виразу`,
+				position: position - 1
+			});
 		}
 
 		this.validateSyntax();
@@ -224,11 +258,8 @@ class ExpressionParser {
 	}
 }
 
-// Example usage
 const parser = new ExpressionParser();
-const testExpression = '-a ++ b - 2v*func((t+2 -, sin(x/*2.01.2), )/8(-)** ';
-
-// -a ++ b - 2v*func((t+2 -, sin(x/*2.01.2), )/8(-)**
+const testExpression = '*a ++ nb /* k -+/ g/';
 const result = parser.parse(testExpression);
 
 console.log('Tokens:', result.tokens);
