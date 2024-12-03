@@ -10,7 +10,8 @@ class ExpressionParser {
 		IDENTIFIER: 'identifier',
 		OPERATOR: 'operator',
 		FUNCTION: 'function',
-		PARENTHESIS: 'parenthesis'
+		PARENTHESIS: 'parenthesis',
+		COMMA: 'comma'
 	};
 
 	// Supported operators
@@ -30,6 +31,8 @@ class ExpressionParser {
 		this.tokens = [];
 		let currentToken = '';
 		let position = 0;
+		let functionCallDepth = 0;
+		let previousToken = null;
 
 		if (!ExpressionParser.PATTERNS.START_EXPRESSION.test(expression[0])) {
 			this.errors.push({
@@ -43,6 +46,23 @@ class ExpressionParser {
 
 			// Skip whitespaces
 			if (/\s/.test(char)) {
+				position++;
+				continue;
+			}
+
+			// Comma handling
+			if (char === ',') {
+				if (functionCallDepth === 0) {
+					this.errors.push({
+						message: `Несподівана кома поза викликом функції на позиції ${position}`,
+						position: position
+					});
+				}
+				this.tokens.push({
+					type: ExpressionParser.TOKEN_TYPES.COMMA,
+					value: char,
+					position: position
+				});
 				position++;
 				continue;
 			}
@@ -88,7 +108,7 @@ class ExpressionParser {
 						if (nextChar === '.') dotCount++;
 						if (dotCount > 1) {
 							this.errors.push({
-								message: `Зайва десяткова крапка в дробовому числі на позиції ${lookahead}`,
+								message: `Зайва десяткова крапка в дробовому числі на позиці ${lookahead}`,
 								position: lookahead
 							});
 						}
@@ -109,6 +129,18 @@ class ExpressionParser {
 					value: currentToken,
 					position: position
 				});
+
+				// Check for invalid syntax after number (identifier or parenthesis)
+				const nextNonWhitespace = expression
+					.slice(lookahead)
+					.match(/^\s*([a-zA-Z_(])/);
+				if (nextNonWhitespace) {
+					this.errors.push({
+						message: `Неправильне ім'я функції на позиції ${lookahead}`,
+						position: lookahead
+					});
+				}
+
 				position = lookahead;
 				continue;
 			}
@@ -154,6 +186,37 @@ class ExpressionParser {
 
 			// Parenthesis
 			if (['(', ')'].includes(char)) {
+				// Track function call depth
+				if (char === '(') {
+					functionCallDepth++;
+
+					// Check for empty function call or consecutive comma
+					const prevToken = this.tokens[this.tokens.length - 1];
+					if (
+						prevToken &&
+						prevToken.type === ExpressionParser.TOKEN_TYPES.COMMA
+					) {
+						this.errors.push({
+							message: `Порожній аргумент функції або послідовні коми на позиції ${position}`,
+							position: position
+						});
+					}
+				} else if (char === ')') {
+					functionCallDepth = Math.max(0, functionCallDepth - 1);
+
+					// Check for comma before closing parenthesis
+					const prevToken = this.tokens[this.tokens.length - 1];
+					if (
+						prevToken &&
+						prevToken.type === ExpressionParser.TOKEN_TYPES.COMMA
+					) {
+						this.errors.push({
+							message: `Зайва кома перед закриваючою дужкою на позиції ${position}`,
+							position: position
+						});
+					}
+				}
+
 				this.tokens.push({
 					type: ExpressionParser.TOKEN_TYPES.PARENTHESIS,
 					value: char,
@@ -180,6 +243,14 @@ class ExpressionParser {
 		) {
 			this.errors.push({
 				message: `Некоректний кінець виразу`,
+				position: position - 1
+			});
+		}
+
+		// Check if all function calls are properly closed
+		if (functionCallDepth > 0) {
+			this.errors.push({
+				message: `Не всі виклики функцій закриті`,
 				position: position - 1
 			});
 		}
@@ -244,11 +315,11 @@ class ExpressionParser {
 }
 
 const parser = new ExpressionParser();
+
+// Test cases
 const testExpression =
 	'2(t) - f2(t) + g()/h(2, )*func(-t/q, f(4-t), -(x+2)*(y-2))';
+
 const result = parser.parse(testExpression);
-// /a*b**c + m)*a*b + a*c - a*smn(j*k/m + m
-// -cos(-&t))/(*(*f)(127.0.0.1, "/dev/null", (t==0)?4more_errors:b^2) - .5
-// *101*1#(t-q)(t+q)//dt - (int*)f(8t, -(k/h)A[i+6.]), exp(), ))(t-k*8.00.1/.0
 console.log('Tokens:', result.tokens);
 console.log('Errors:', result.errors);
